@@ -7,25 +7,9 @@
 
 ## 二. 学习大纲
 
-* 微服务概述
+[TOC]
 
-* SpringCloud入门概述
 
-* Rest微服务构建案例工程模块
-
-* Eureka服务注册与发现
-
-* Ribbon负载均衡
-
-* Feign负载均衡
-
-* Hystrix断路器
-
-* zuul路由网关
-
-* SpringCloud Config分布式配置中心
-
-  
 
 ## 三. 问题概览
 
