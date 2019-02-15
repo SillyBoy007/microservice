@@ -968,8 +968,7 @@ public class DeptProvider8001 {
 ```java
  // 测试@EnableDiscoveryClient,消费端可以调用服务发现
     @RequestMapping(value = "/consumer/dept/discovery")
-    public Object discovery()
-    {
+    public Object discovery(){
         return restTemplate.getForObject(REST_URL_PREFIX + "/dept/discovery", Object.class);
     }
 ```
@@ -992,27 +991,6 @@ public class DeptProvider8001 {
 修改域名映射,找到系统的host文件(C:\Windows\System32\Drivers\etc )
 
 ```
-# Copyright (c) 1993-2009 Microsoft Corp.
-#
-# This is a sample HOSTS file used by Microsoft TCP/IP for Windows.
-#
-# This file contains the mappings of IP addresses to host names. Each
-# entry should be kept on an individual line. The IP address should
-# be placed in the first column followed by the corresponding host name.
-# The IP address and the host name should be separated by at least one
-# space.
-#
-# Additionally, comments (such as these) may be inserted on individual
-# lines or following the machine name denoted by a '#' symbol.
-#
-# For example:
-#
-#      102.54.94.97     rhino.acme.com          # source server
-#       38.25.63.10     x.acme.com              # x client host
-
-# localhost name resolution is handled within DNS itself.
-#	127.0.0.1       localhost
-#	::1             localhost
 0.0.0.0 account.jetbrains.com
 127.0.0.1 eureka7001.com
 127.0.0.1 eureka7002.com
