@@ -40,6 +40,7 @@
 **3.3 SpringCloud和Dubbo有哪些区别?**
 
 * 通信机制区别:Dubbo是基于RPC远程过程调用，微服务是基于HTTP的REST调用
+* 详见[《](https://www.cnblogs.com/wangxiayun/p/10364344.html)[SpringCloud与微服务 Ⅲ --- SpringCloud入门概述](https://www.cnblogs.com/wangxiayun/p/10364344.html)[》](https://www.cnblogs.com/wangxiayun/p/10364344.html)第三段。 
 
 **3.4 什么是服务熔断? 什么是服务降级?**
 
@@ -49,13 +50,21 @@
 
 **3.6 微服务技术栈有哪些?**
 
+* 详见[《SpringCloud与微服务 Ⅱ --- 微服务概述》](https://www.cnblogs.com/wangxiayun/p/10335104.html)第四段。 
+
 **3.7 Eureka和Zookeeper都可以提供服务注册于发现的功能，两者有什么区别?**
+
+- 详见[《SpringCloud与微服务Ⅴ --- Eureka服务注册与发现》](https://www.cnblogs.com/wangxiayun/p/10376335.html)第十段。
+
+**3.8 Ribbon、Feign、Nginx都可以用来负载均衡，它们有何区别?** 
+
+
 
 <span id="jump4"></span>
 
 ## 四.微服务概述 
 
-4.1 什么是微服务**
+**4.1 什么是微服务**
 
 - [Martin Fowler论文](https://martinfowler.com/articles/microservices.html#MicroservicesAndSoa)对微服务的阐述([中文版](http://blog.cuicc.com/blog/2015/07/22/microservices/))
 - 对单一应用进行拆分
