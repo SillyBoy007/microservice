@@ -1246,7 +1246,7 @@ public class DeptConsumer80 {
 
 **架构图:**
 
-![6](img\6.png)
+![6](img/6.png)
 
 Ribbon在工作时分为两步
 
