@@ -1,0 +1,42 @@
+server:
+  port: 8002
+mybatis:
+  config-location: classpath:mybatis/mybatis.cfg.xml #mybatis配置文件所在路径
+  type-aliases-package: com.wang.springcloud.entities #所有entity别名类所在包
+  mapper-locations: classpath:mybatis/mapper/**/*.xml #mapper映射文件
+
+spring:
+  application:
+    name: microservice-dept
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource  #数据源类型
+    driver-class-name: org.gjt.mm.mysql.Driver  #数据库驱动
+    url: jdbc:mysql://localhost:3306/cloudDB02  #数据库url
+    username: root
+    password: 123456
+    dbcp2:
+      min-idle: 5 #数据库连接池的最小维持连接数
+      initial-size: 5 #初始化连接数
+      max-total: 5  #最大连接数
+      max-wait-millis: 200 #等待连接获取的最大超时时间
+eureka:
+  client:
+    service-url:
+      #defaultZone: http://localhost:7001/eureka
+      defaultZone: http://localhost:7001/eureka,http://localhost:7002/eureka,http://localhost:7002/eureka
+  instance:
+    instance-id: microservice-dept-8002
+    prefer-ip-address: true #访问路径可以显示ip地址
+
+#info:
+#  app.name: microservice
+#  company.name: wang.com
+#  bulid.artifactId: $project.artifactId$
+#  bulid.version: $project.version$
+info:
+  app.name: microservice
+  company.name: www.waaaa.com
+  build.artifactId: microservice-provider-dept-8002
+  build.version: 1.0-SNAPSHOT
+
+

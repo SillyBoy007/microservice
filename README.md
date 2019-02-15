@@ -15,7 +15,7 @@
 
 * [Eureka服务注册与发现](#jump7)
 
-* Ribbon负载均衡
+* [Ribbon负载均衡](#jump8)
 
 * Feign负载均衡
 
@@ -448,7 +448,26 @@ public class Dept implements Serializable { //Entity
 
 ```
 
-**2.系统配置文件**
+**2.创建数据库并插入几条语句**
+
+```sql
+DROP DATABASE IF EXISTS cloudDB01;
+CREATE DATABASE cloudDB01 CHARACTER SET UTF8;
+USE cloudDB01;
+CREATE TABLE dept
+(
+	deptno BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	dname VARCHAR(60),
+  db_source VARCHAR(60)
+);
+INSERT INTO dept(dname,db_source) VALUES('开发部',DATABASE());
+INSERT INTO dept(dname,db_source) VALUES('人事部',DATABASE());
+INSERT INTO dept(dname,db_source) VALUES('财务部',DATABASE());
+INSERT INTO dept(dname,db_source) VALUES('市场部',DATABASE());
+INSERT INTO dept(dname,db_source) VALUES('运维部',DATABASE());
+```
+
+**3.系统配置文件**
 
 ```java
 server:
@@ -475,7 +494,7 @@ spring:
 
 ```
 
-**3.mybatis的xml配置文件**
+**4.mybatis的xml配置文件**
 
 ```xml
 <?xml version="1.0" encoding="UTF-8" ?>
@@ -492,7 +511,7 @@ spring:
 
 ```
 
-**4.mapper接口**
+**5.mapper接口**
 
 ```java
 @Mapper
@@ -505,7 +524,7 @@ public interface DeptMapper {
 }
 ```
 
-**5.mapper的xml映射**
+**6.mapper的xml映射**
 
 ```xml
 <?xml version="1.0" encoding="UTF-8" ?>
@@ -527,7 +546,7 @@ public interface DeptMapper {
 
 ```
 
-**6.启动类**
+**7.启动类**
 
 ```java
 package com.wang.springcloud;
@@ -1100,11 +1119,11 @@ AP - 满足可用性，分区容错性的系统，通常对一致性的要求会
 
 **3.Eureka和Zookeeper对比**
 
-* Zookeeper保证CP:
+- Zookeeper保证CP:
 
   当向注册中心查询服务列表时，我们可以容忍注册中心返回的是几分钟以前的注册信息，但不能接受服务down掉不可用。也就是说，服务注册功能对可用性(Availability)的要求高于一致性(Consistency)。使用zookeeper会出现一种情况，当master节点因为网络故障与其他节点失去联系时，剩余节点会重新进行leader选举。问题在于，选举leader的时间过长，30~120s，且选举期间整个zookeeper集群都是不可用的，这就导致在选举期间注册服务瘫痪。在云部署的环境下，因网络问题使得zookeeper集群失去master节点是较大概率会发生的事，虽然服务能最终恢复，但是漫长的选举时间导致注册长期不可用是不可容忍的。
 
-* Eureka保证AP:
+- Eureka保证AP:
 
   Eureka在设计的时候就考虑到了这一点，优先保证了可用性(Availability)的原则。**Eureka各个节点都是平等的。**几个节点的挂掉不会影响正常节点的工作,剩余节点依然可以提供注册和查询服务。而Eureka客户端在向某个Eureka注册时如果发现连接失败，则会自动切换至其它节点，只要有一台Eureka还在，就能保证注册服务可用性。只不过查到的信息可能不是最新的(不保证强一致性)。除此之外，Eureka还有一种自我保护机制,如果在15分钟内超过85%的节点都没有正常心跳,那么Eureka就认为客户端与注册中心出现了网络故障,此时会出现以下情况:
 
@@ -1113,3 +1132,346 @@ AP - 满足可用性，分区容错性的系统，通常对一致性的要求会
   3. 当网络稳定时，当前实例新的注册信息会被同步到其它节点中
 
   **因此,Eureka可以很好的应对因网络故障导致部分节点失去联系的情况,而不会像zookeeper那样使整个注册服务瘫痪。**
+
+<span id="jump8"></span>
+
+## 八.Ribbon负载均衡
+
+### 8.1 Ribbon是什么
+
+Sping Cloud  Ribbon是基于Netflix Ribbon实现的一套**客户端负载均衡**的工具。
+
+简单的说,Ribbon是Netflix发布的开源项目,主要功能是提供客户端的软件负载均衡算法,将Netflix的中间层服务连接在一起。Ribbon客户端组件提供一系列完整的配置项如连接超时，重试等。简单地说,就是在配置文件中列出Load Balancer(简称LB) 后面所有的机器, Ribbon会自动的帮助你基于某种规则(如简单轮询,随机连接等)去连接这些机器。我们也很容易使用Ribbon实现自定义的负载均衡算法。
+
+**负载均衡**
+
+LB，即负载均衡(Load Balancer),在微服务或分布式集群中经常用的一种应用。
+
+负载均衡简单的说就是将用户的请求平摊的分配到多个服务上，从而达到系统的HA(高可用)。
+
+常见的负载均衡软件有Nginx,LVS,硬件F5等。
+
+相应的中间件,例如:dubbo和SpringCloud中均给我们提供了负载均衡,SpringCloud的负载均衡算法可以自定义。
+
+* 集中式LB
+
+  即在服务的消费方和提供方之间使用独立的LB设施(可以是硬件F5(好用但是贵)，也可以说软件,如nginx),由该设施负责把访问请求通过某种策略转发至服务的提供方。
+
+* 进程内LB
+
+  将LB逻辑集成到消费方,消费方从服务注册中心获知有哪些地址可用,然后自己再从这些地址中选择出一个合适的服务器。Ribbon就属于进程内LB，它只是一个类库,集成消费方进程,消费方通过它来获取到服务提供方的地址。
+
+**官网资料:**https://github.com/Netflix/ribbon/wiki
+
+### 8.2 Ribbon的初步配置
+
+修改microservice-consumer-dept-80项目。
+
+**修改pom文件:**
+
+```xml
+<!-- Ribbon相关 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-eureka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-ribbon</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-config</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+```
+
+**修改yml配置文件:**
+
+追加eureka的服务注册地址。
+
+```properties
+eureka:
+  client:
+    register-with-eureka: false
+    service-url:
+      #defaultZone: http://localhost:7001/eureka
+      defaultZone: http://localhost:7001/eureka,http://localhost:7002/eureka,http://localhost:7002/eureka
+```
+
+**在RestTemplate上标注@LoadBalanced:**
+
+实现负载均衡
+
+```java
+@Configuration
+public class MyApplicationConfig {
+    @Bean
+    @LoadBalanced //负载均衡
+    public RestTemplate getRestTemplate(){
+        return new RestTemplate();
+    }
+}
+```
+
+**主启动类注解@EnableEurekaClient**
+
+```java
+@SpringBootApplication
+@EnableEurekaClient
+public class DeptConsumer80 {
+    public static void main(String[] args) {
+        SpringApplication.run(DeptConsumer80.class,args);
+    }
+}
+```
+
+**修改微服务访问地址:**
+
+修改DeptController类中的REST_URL_PREFIX，使得消费端通过微服务名称来访问提供端的接口。
+
+```java
+ //private static final String REST_URL_PREFIX = "http://localhost:8001";
+ private static final String REST_URL_PREFIX = "http://MICROSERVICE-DEPT";
+```
+
+**结论:**Ribbon和Eureka整合后Consumer可以直接调用服务而不用再关心地址和端口号
+
+
+
+### 8.3 Ribbon的负载均衡
+
+**架构图:**
+
+![6](img\6.png)
+
+Ribbon在工作时分为两步
+
+第一步先选择EurekaServer,它优先选择在同一个区域内负载较少的server。
+
+第二步再根据用户指定的策略,在从server取到的服务注册列表中选择一个地址。
+
+其中Ribbon提供了多种策略:比如轮询、随机和根据响应时间加权。
+
+
+
+**搭建步骤:**
+
+1.新建两个服务提供者microservice-provider-dept-8002、microservice-provider-dept-8003,项目可以参考microservice-provider-dept-8001。
+
+2.新建两个数据库cloudDB02,cloudDB03，表结构与cloudDB01数据库一致
+
+```sql
+DROP DATABASE IF EXISTS cloudDB02;
+CREATE DATABASE cloudDB01 CHARACTER SET UTF8;
+USE cloudDB01;
+CREATE TABLE dept
+(
+	deptno BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	dname VARCHAR(60),
+  db_source VARCHAR(60)
+);
+INSERT INTO dept(dname,db_source) VALUES('开发部',DATABASE());
+INSERT INTO dept(dname,db_source) VALUES('人事部',DATABASE());
+INSERT INTO dept(dname,db_source) VALUES('财务部',DATABASE());
+INSERT INTO dept(dname,db_source) VALUES('市场部',DATABASE());
+INSERT INTO dept(dname,db_source) VALUES('运维部',DATABASE());
+```
+
+3.分别修改microservice-provider-dept-8002、microservice-provider-dept-8003的yml文件。
+
+主要修改的是端口号,数据库。
+
+```properties
+server:
+  port: 8002
+spring:
+  application:
+    name: microservice-dept
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource  #数据源类型
+    driver-class-name: org.gjt.mm.mysql.Driver  #数据库驱动
+    url: jdbc:mysql://localhost:3306/cloudDB02  #数据库url  
+```
+
+4.启动所有项目,分别访问:
+
+http://localhost:8001/dept/get/1
+
+http://localhost:8002/dept/get/1
+
+http://localhost:8003/dept/get/1
+
+若都能访问，说明所有服务都已经启用。
+
+5.启动客户端项目microservice-consumer-dept-80,访问http://localhost/consumer/dept/list。观察返回的数据，并刷新页面。可以看到刷新后的数据分别来自不同数据库，说明已经启用了负载均衡。Ribbon默认采用的算法是轮询算法。
+
+**总结:Ribbon其实就是一个软负载均衡的客户端组件，他可以和其他所需请求的客户端结合使用，和eureka结合只是其中的一个实例。**
+
+### 8.4 Ribbon的核心组件IRule
+
+通过上面的例子我们知道,Ribbon默认采用的算法是轮询算法,那么如何配置自定义负载均衡算法呢？
+
+IRule:根据特定的算法中从服务列表中选取一个要访问的服务。
+
+**Ribbon自带的七种负载均衡算法**
+
+1. **RoundRobinRule**:轮询
+2. **RandomRule**:随机
+3. **AvailabilityFilteringRule**:先过滤由于多次访问故障而处于断路器跳闸状态的服务，还有并发的连接数量超过阈值的服务，然后对剩余的服务列表按照轮询策略进行访问。
+4. **WeightedReponseTimeRule**:根据平均响应时间计算所有服务的权重，响应时间越短服务权重大被选中的概率高,刚启动时如果统计信息不足,则使用轮询策略,等统计信息足够,会切换到WeightedReponseTimeRule
+5. **RetryRule**:先按照轮询策略获取服务,如果获取服务失败则在指定时间内会进行重试，获取可用的服务
+6. **BestAvailableRule**:先过滤由于多次访问故障而处于断路器跳闸状态的服务，然后选择一个并发量最小的服务
+7. **ZoneAvoidanceRule:**默认规则，复合判断server所在区域的性能和server的可用性选择服务器
+
+**切换成随机的负载均衡算法**
+
+需要换哪种算法，只需要在config类里注入该算法的bean，然后重启服务就会生效了。
+
+```java
+@Configuration
+public class MyApplicationConfig {
+    @Bean
+    @LoadBalanced //负载均衡
+    public RestTemplate getRestTemplate(){
+        return new RestTemplate();
+    }
+
+    @Bean
+    public IRule myIRule(){
+        return new RandomRule();
+    }
+}
+```
+
+### 8.5 自定义负载均衡算法
+
+修改microservice-consumer-dept-80项目。
+
+**规则描述**
+
+要求每台服务器被调用5次，然后轮询如下一台同样被调用5次，所有服务器轮询之后又从最初的服务器开始重新调用五次轮询。
+
+**1.自定义算法规则**
+
+```java
+public class MyRandomRule extends AbstractLoadBalancerRule
+{
+
+	// total = 0 // 当total==5以后，我们指针才能往下走，
+	// index = 0 // 当前对外提供服务的服务器地址，
+	// total需要重新置为零，但是已经达到过一个5次，我们的index = 1
+	// 分析：我们5次，但是微服务只有8001 8002 8003 三台
+	// 
+	
+	private int total = 0; 			// 总共被调用的次数，目前要求每台被调用5次
+	private int currentIndex = 0;	// 当前提供服务的机器号
+
+	public Server choose(ILoadBalancer lb, Object key)
+	{
+		if (lb == null) {
+			return null;
+		}
+		Server server = null;
+		while (server == null) {
+			if (Thread.interrupted()) {
+				return null;
+			}
+			List<Server> upList = lb.getReachableServers();
+			List<Server> allList = lb.getAllServers();
+
+			int serverCount = allList.size();
+			if (serverCount == 0) {
+				/*
+				 * No servers. End regardless of pass, because subsequent passes only get more
+				 * restrictive.
+				 */
+				return null;
+			}
+
+//			int index = rand.nextInt(serverCount);// java.util.Random().nextInt(3);
+//			server = upList.get(index);
+
+			
+//			private int total = 0; 			// 总共被调用的次数，目前要求每台被调用5次
+//			private int currentIndex = 0;	// 当前提供服务的机器号
+            if(total < 5)
+            {
+	            server = upList.get(currentIndex);
+	            total++;
+            }else {
+	            total = 0;
+	            currentIndex++;
+	            if(currentIndex >= upList.size())
+	            {
+	              currentIndex = 0;
+	            }
+            }									
+			if (server == null) {
+				/*
+				 * The only time this should happen is if the server list were somehow trimmed.
+				 * This is a transient condition. Retry after yielding.
+				 */
+				Thread.yield();
+				continue;
+			}
+
+			if (server.isAlive()) {
+				return (server);
+			}
+
+			// Shouldn't actually happen.. but must be transient or a bug.
+			server = null;
+			Thread.yield();
+		}
+		return server;
+	}
+
+	@Override
+	public Server choose(Object key)
+	{
+		return choose(getLoadBalancer(), key);
+	}
+	@Override
+	public void initWithNiwsConfig(IClientConfig clientConfig)
+	{
+		// TODO Auto-generated method stub
+	}
+
+}
+```
+
+**2.自定义规则的配置类:**
+
+```java
+@Configuration
+public class MySelfRule {
+    @Bean
+    public IRule myRule(){
+        return new MyRandomRule();  //自定义算法策略
+    }
+}
+
+```
+
+**注意:**这个自定义配置类MySelfRule.class不能放在@ComponentScan所扫描的包下以及子包下.否则我们自定义的这个配置类就会被所有Ribbon客户端共享。
+
+**3.主启动类添加@RibbonClient**
+
+在启动该微服务的时候就能去加载我们自定义Ribbon配置类，从而使配置生效
+
+```java
+@SpringBootApplication
+@EnableEurekaClient
+@RibbonClient(name = "MICROSERVICE-DEPT",configuration = MySelfRule.class)
+public class DeptConsumer80 {
+    public static void main(String[] args) {
+        SpringApplication.run(DeptConsumer80.class,args);
+    }
+}
+```
+
+以上步骤完成后，重启所有服务器，调用客户端microservice-consumer-dept-80项目的接口。这里需要注意的是,若出现错误，等待一段时间，服务注册的时候会有一定缓冲时间，然后再次访问服务，然后测试负载均衡的策略是否符合自定义的规则。
