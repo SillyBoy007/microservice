@@ -17,9 +17,9 @@
 
 * [Ribbon负载均衡](#jump8)
 
-* Feign负载均衡
+* [Feign负载均衡](#jump9)
 
-* Hystrix断路器
+* [Hystrix断路器](#jump10)
 
 * zuul路由网关
 
@@ -367,7 +367,7 @@ public class Dept implements Serializable { //Entity
 }
 ```
 
-
+完成后使用maven的package命令打包，方便其他项目调用。
 
 ### 6.3 服务提供者
 
@@ -1484,3 +1484,207 @@ public class DeptConsumer80 {
 ```
 
 以上步骤完成后，重启所有服务器，调用客户端microservice-consumer-dept-80项目的接口。这里需要注意的是,若出现错误，等待一段时间，服务注册的时候会有一定缓冲时间，然后再次访问服务，然后测试负载均衡的策略是否符合自定义的规则。
+
+<span id="jump9"></span>
+
+## 九.Feign负载均衡
+
+官方文档:https://projects.spring.io/spring-cloud/spring-cloud.html#spring-cloud-feign
+
+### 9.1 Feign是什么
+
+[Feign](https://github.com/Netflix/feign)是一个声明式的Web客户端。它使编写Web服务客户端变得更容易,它的使用方法是定义一个接口,然后在上面添加注解,同时也支持JAX-RS标准的注解。Feign也支持可拔插式的编码器和解码器。SpringCloud对Feign进行了封装,使其支持了SpringMVC标准注解和HttpMessageConverts。Feign可以与Eureka和Ribbon组合使用以支持负载均衡。
+
+### 9.2 Feign能做什么
+
+Feign旨在编写Java Http客户端更加容易。
+
+前面在使用Ribbon+RestTemplate时,利用RestTemplate对http请求的封装处理，形成了一套模板化的调用方法。但是实际开发中,由于对服务依赖的调用可能不止一处,往往一个接口会被多次调用,所以通常都会针对每个微服务自行封装一些客户端类来包装这些依赖服务的调用。所以,Feign在此基础上做了进一步封装,由他来帮助我们定义和实现依赖服务接口的定义。在Feign的实现下,我们只需要创建一个接口并使用注解的方式来配置它(以前是Dao接口上面标注Mapper注解,现在是一个微服务接口上面标注一个Feign即可)，即可完成对服务提供方的接口绑定,简化了使用Spring Cloud Ribbon时，自动封装服务调用客户端的开发量。
+
+**Feign集成了Ribbon**
+
+利用Ribbon维护了MicroServiceCloud-Dept的服务列表信息,并且通过轮询实现了客户端的负载均衡。而与Ribbon不同的是,**通过Feign只需要定义服务绑定接口且以声明式的方法**,优雅而简单的实现了服务调用。
+
+Feign通过接口的方法调用Rest服务(之前是Ribbon+RestTemplate),该请求发送给Eureka服务器(http://MICROSERVICE-DEPT/dept/list),通过feign直接找到服务接口,由于在进行服务调用的时候融合了Ribbon技术,所以也支持负载均衡。
+
+### 9.2 Feign工程构建
+
+**修改microservice-api项目**
+
+**pom文件修改**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>microservice</artifactId>
+        <groupId>com.wang.springcloud</groupId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>microservice-api</artifactId>
+    <packaging>jar</packaging>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+        </dependency>
+        <!-- Feign相关 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-feign</artifactId>
+        </dependency>
+    </dependencies>
+</project>
+```
+
+**新增API接口类**
+
+```java
+package com.wang.springcloud.service;
+
+import com.wang.springcloud.entities.Dept;
+import org.springframework.cloud.netflix.feign.FeignClient;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+
+import java.util.List;
+
+/**
+ *
+ * @Description: 修改microservicecloud-api工程，根据已经有的DeptClientService接口
+
+新建
+
+一个实现了FallbackFactory接口的类DeptClientServiceFallbackFactory
+ * @author 
+ * @date 
+ */
+@FeignClient(value = "MICROSERVICE-DEPT")
+//@FeignClient(value = "MICROSERVICECLOUD-DEPT",fallbackFactory=DeptClientServiceFallbackFactory.class)
+public interface DeptClientService
+{
+    @RequestMapping(value = "/dept/get/{id}", method = RequestMethod.GET)
+    public Dept get(@PathVariable("id") long id);
+
+    @RequestMapping(value = "/dept/list", method = RequestMethod.GET)
+    public List<Dept> list();
+
+    @RequestMapping(value = "/dept/add", method = RequestMethod.POST)
+    public boolean add(Dept dept);
+}
+```
+
+上述工作完成后，使用clean,package重新打包成jar，方便其他项目调用。
+
+新建microservice-consumer-dept-feign项目。
+
+**microservice-consumer-dept-feign的pom文件**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>microservice</artifactId>
+        <groupId>com.wang.springcloud</groupId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>microservice-consumer-dept-feign</artifactId>
+
+    <dependencies>
+        <dependency><!-- 自己定义的api -->
+            <groupId>com.wang.springcloud</groupId>
+            <artifactId>microservice-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency><!-- Feign相关 -->
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-feign</artifactId>
+        </dependency>
+        <!-- Ribbon相关 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-eureka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-ribbon</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-config</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <!-- 修改后立即生效，热部署 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>springloaded</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>
+```
+
+**修改DeptController**
+
+```java
+@RestController
+public class DeptController {
+    @Autowired
+    private DeptClientService service;
+
+    @RequestMapping(value = "/consumer/dept/get/{id}")
+    public Dept get(@PathVariable("id") Long id)
+    {
+        return this.service.get(id);
+    }
+
+    @RequestMapping(value = "/consumer/dept/list")
+    public List<Dept> list()
+    {
+        return this.service.list();
+    }
+
+    @RequestMapping(value = "/consumer/dept/add")
+    public Object add(Dept dept)
+    {
+        return this.service.add(dept);
+    }
+
+}
+```
+
+启动所有项目，等待一段时间待注册完毕后,访问http://localhost/consumer/dept/list,不断刷新页面观察是否有了负载均衡效果。
+
+<span id="jump10"></span>
+
+## 十.Hystrix断路器
+
+复杂的分布式体系结构中的应用程序有数十个依赖关系,每个依赖关系在某些时候将不可避免地失败。
+
+**服务雪崩**
+
+多个微服务之间调用的时候，假设微服务调用服务B和微服务C，微服务B和微服务C又调用其他服务,这就是所谓的"扇出"。如果扇出的链路上某个微服务的调用响应时间过长或者不可用，对微服务A的调用就会占用越来越多的系统资源，进而引起系统崩溃,所谓的“雪崩效应”。
+
+对于高流量的应用来说,单一的后端依赖可能会导致所有服务器上的所有资源都在几秒钟内饱和。比失败更糟糕的是，这些应用程序还可能导致服务之间的延迟增加，备份队列，线程和其他系统资源紧张，导致整个系统发生更多的级联故障。这些都表示需要对故障和延迟进行隔离和管理，以便单个依赖关系的失败，不能取消整个应用程序或系统。
+
+### 10.1 Hystrix是什么
+
+Hystrix是一个用于处理分布式系统的延迟和容错的开源库，在分布式系统里，许多依赖不可避免的会调用失败，比如超时、异常等，Hystrix能保证在一个依赖出问题的情况下，不会导致整体服务失败，避免级联故障，以提高分布式系统的弹性。
+
+"断路器"本身是一种开关装置，当某个服务单元发生故障之后，通过断路器的故障监控(类似熔断保险丝),像调用方法返回一个符合预期的、可以处理的备选响应(Fallback),而不是长时间的等待或者抛出调用方法无法处理的异常，这样就保证了服务调用方的线程不会被长时间、不必要地占用，从而避免了故障在分布式系统的蔓延，乃至雪崩。
