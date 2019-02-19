@@ -8,7 +8,7 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>microservicecloud-consumer-hystrix-dashboard</artifactId>
+    <artifactId>microservice-consumer-hystrix-dashboard</artifactId>
 
     <dependencies>
         <!-- 自己定义的api -->

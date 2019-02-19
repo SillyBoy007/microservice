@@ -1,11 +1,11 @@
 # SpringCloud学习概述
 
-## 一. 前置知识:
+## Ⅰ.前置知识:
 
 * 学习SpringCloud之前需要具备和掌握如下框架和工具的使用:SpringMVC，Spring，,Spring Boot，Mybatis，Maven，Git。
 * SpringCloud不是某一门技术，而是一堆微服务架构技术的集合体，大概有21种之多，我只学习了其中几个比较重要和关键的几种(SpringCloud的5大神兽)，如果想要全面学习还是得参考官方文档。
 
-## 二. 学习大纲
+## Ⅱ.学习大纲
 
 * [微服务概述](#jump4)
 
@@ -21,13 +21,13 @@
 
 * [Hystrix断路器](#jump10)
 
-* zuul路由网关
+* [Zuul路由网关](#jump11)
 
-* SpringCloud Config分布式配置中心
+* [SpringCloud Config分布式配置中心](#jump12)
 
   
 
-## 三. 问题概览
+## Ⅲ. 问题概览
 
 **3.1 什么是微服务?**
 
@@ -62,7 +62,7 @@
 
 <span id="jump4"></span>
 
-## 四.微服务概述 
+## Ⅳ.微服务概述 
 
 **4.1 什么是微服务**
 
@@ -146,7 +146,7 @@
 
   <span id="jump5"></span>
 
-## 五.SpringCloud入门概述
+## Ⅴ.SpringCloud入门概述
 
 
 
@@ -207,7 +207,7 @@ Spring Cloud的功能比Dubbo更为强大，涵盖更广，而且作为Spring的
 
 <span id="jump6"></span>
 
-## 六.Rest微服务构建工程
+## Ⅵ.Rest微服务构建工程
 
 ### 6.1 父工程搭建
 
@@ -702,7 +702,7 @@ public class DeptController {
 
 <span id="jump7"></span>
 
-## 七.Eureka注册中心
+## Ⅶ.Eureka注册中心
 
 ### 7.1 Eureka是什么
 
@@ -1144,7 +1144,7 @@ AP - 满足可用性，分区容错性的系统，通常对一致性的要求会
 
 <span id="jump8"></span>
 
-## 八.Ribbon负载均衡
+## Ⅷ.Ribbon负载均衡
 
 ### 8.1 Ribbon是什么
 
@@ -1487,7 +1487,7 @@ public class DeptConsumer80 {
 
 <span id="jump9"></span>
 
-## 九.Feign负载均衡
+## Ⅸ.Feign负载均衡
 
 官方文档:https://projects.spring.io/spring-cloud/spring-cloud.html#spring-cloud-feign
 
@@ -1673,7 +1673,7 @@ public class DeptController {
 
 <span id="jump10"></span>
 
-## 十.Hystrix断路器
+## Ⅹ.Hystrix断路器
 
 复杂的分布式体系结构中的应用程序有数十个依赖关系,每个依赖关系在某些时候将不可避免地失败。
 
@@ -1977,18 +1977,18 @@ feign:
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.atguigu.springcloud</groupId>
-        <artifactId>microservicecloud</artifactId>
-        <version>0.0.1-SNAPSHOT</version>
+        <groupId>com.wang.springcloud</groupId>
+        <artifactId>microservice</artifactId>
+        <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>microservicecloud-consumer-hystrix-dashboard</artifactId>
+    <artifactId>microservice-consumer-hystrix-dashboard</artifactId>
 
     <dependencies>
         <!-- 自己定义的api -->
         <dependency>
-            <groupId>com.atguigu.springcloud</groupId>
-            <artifactId>microservicecloud-api</artifactId>
+            <groupId>com.wang.springcloud</groupId>
+            <artifactId>microservice-api</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -2099,3 +2099,420 @@ Success成功| Short-Circuited短路 | Bad Request请求无效 | Timeout超时 |
 
 ![1550560929766](img/9.png)
 
+<span id="jump11"></span>
+
+## Ⅺ.Zuul路由网关
+
+### 11.1 Zool是什么
+
+Zuul包含了对请求路由和过滤两个最主要的功能:
+
+其中路由功能负责将外部请求转发到具体的微服务实例上,是实现外部访问统一入口的基础而过滤器功能则负责对请求的处理过程进行干预，是实现请求校验、服务聚合等功能的基础。
+
+**Zuul和Eureka进行整合,将Zuul自身注册为Eureka服务治理下的应用**，同时从Eureka中获得其他微服务的消息，也即以后的访问微服务都是通过Zuul跳转后获得。
+
+Zuul为我们提供了代理、路由、过滤等三大功能。
+
+https://github.com/Netflix/zuul/wiki
+
+### 11.2 路由的基本配置
+
+新建模块microservice-zuul-gateway-9527项目。
+
+**pom文件**
+
+```xml
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.wang.springcloud</groupId>
+        <artifactId>microservice</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>microservice-zuul-gateway-9527</artifactId>
+
+    <dependencies>
+        <!-- zuul路由网关 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-zuul</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-eureka</artifactId>
+        </dependency>
+        <!-- actuator监控 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <!-- hystrix容错 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-hystrix</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-config</artifactId>
+        </dependency>
+        <!-- 日常标配 -->
+        <dependency>
+            <groupId>com.wang.springcloud</groupId>
+            <artifactId>microservice-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jetty</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+        </dependency>
+        <!-- 热部署插件 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>springloaded</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+        </dependency>
+    </dependencies>
+</project>
+
+```
+
+**yml配置文件**
+
+```properties
+server:
+  port: 9527
+spring:
+  application:
+    name: microservice-zuul-gateway
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:7001/eureka,http://localhost:7002/eureka,http://localhost:7003/eureka
+  instance:
+    instance-id: gateway-9527.com
+    prefer-ip-address: true
+info:
+  app.name: microservice
+  company.name: www.gateway.com
+  build.artifactId: microservice-zuul-gateway-9527
+  build.version: 1.0-SNAPSHOT
+
+```
+
+**修改host文件**
+
+修改域名映射,找到系统的host文件(C:\Windows\System32\Drivers\etc ),新增如下映射关系:
+
+```
+127.0.0.1 myzuul.com
+```
+
+**启动类注解:**
+
+```java
+package com.wang.springcloud;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.netflix.zuul.EnableZuulProxy;
+
+@SpringBootApplication
+@EnableZuulProxy
+public class ZuulGateWay9527 {
+    public static void main(String[] args) {
+        SpringApplication.run(ZuulGateWay9527.class,args);
+    }
+}
+```
+
+**启动测试:**
+
+启动3个集群,一个服务提供者，一个路由项目。
+
+使用路由访问:http://myzuul.com:9527/microservice-dept/dept/get/2
+
+### 11.3 路由访问的映射规则
+
+修改路由的访问路径，隐藏真实的路由，对外暴露一个虚拟的路由，防止泄露微服务的名称等信息。
+
+修改microservice-zuul-gateway-9527项目。
+
+**yml修改**
+
+```properties
+zuul:
+  ignored-services: microservice-dept #隐藏该微服务名称
+  routes:
+    mydept.serviceId: microservice-dept
+    mydept.path: /mydept/**
+```
+
+修改完毕后访问:http://myzuul.com:9527/mydept/dept/get/2
+
+若要禁止掉所有真实微服务名称:
+
+```properties
+zuul:
+  ignored-services: "*"	#隐藏所有微服务名称
+```
+
+**设置统一公共前缀**
+
+```properties
+zuul:
+  prefix: /wang
+```
+
+配置完成后重启编译然后访问:http://myzuul.com:9527/wang/mydept/dept/get/2
+
+**完整的yml配置**
+
+```properties
+server:
+  port: 9527
+spring:
+  application:
+    name: microservice-zuul-gateway
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:7001/eureka,http://localhost:7002/eureka,http://localhost:7003/eureka
+  instance:
+    instance-id: gateway-9527.com
+    prefer-ip-address: true
+
+
+zuul:
+  prefix: /wang
+  ignored-services: "*" #忽略真实服务名
+  routes:
+    mydept.serviceId: microservice-dept
+    mydept.path: /mydept/**
+
+
+info:
+  app.name: microservice
+  company.name: www.gateway.com
+  build.artifactId: microservice-zuul-gateway-9527
+  build.version: 1.0-SNAPSHOT
+
+```
+
+<span id="jump12"></span>
+
+## Ⅻ.SpringCloud Config分布式配置中心
+
+### 12.1 SpringCloud Config是什么
+
+**分布式系统面临的问题 --- 配置问题**
+
+微服务意味着要将单体应用中的业务拆分成一个个子服务,每个服务的粒度相对较小，因此系统中会出现大量的服务。由于每个服务都需要必要的配置信息才能运行，所以一套集中式的、动态的配置管理设施是必不可少的。SpringCloud提供了ConfigServer来解决这个问题，我们每一个微服务自己带着一个application.yml,上百个配置文件的管理。
+
+**SpringCloud Config是什么**
+
+![](img/10.png)
+
+SpringCloud Config可以从github上获取配置服务信息，为微服务架构中的微服务提供集中化的外部配置支持,配置服务器为各个不同微服务应用的所有环境提供了一个**中心化的外部配置**。
+
+### 12.2 SpringCloud Config的工作原理
+
+SpringCloud Config分为服务端和客户端两部分。
+
+服务端也称为分布式配置中心，它是一个独立的微服务应用，用来连接配置服务器并为客户端提供获取配置信息，加密/解密信息等访问接口。
+
+客户端则是通过指定的配置中心来管理应用资源，以及业务相关的配置内容，并在启动的时候从配置中心获取和加载配置信息配置服务器默认采用git来存储配置信息，这样就有助于对环境配置进行版本管理，并且可以通过git客户端工具来方便的管理和访问配置内容。
+
+### 12.3 SpringCloud Config能做什么
+
+1.集中管理配置文件
+
+2.不同环境不同配置，动态化的配置更新，分环境部署比如dev/test/prod/beta/release
+
+3.运行期间动态调整配置，不再需要每个服务部署的机器上编写配置文件，服务会向配置中心统一拉取配置自己的信息。
+
+4.当配置发生变动时，服务不需要重启即可感知到配置的变化并应用新的配置
+
+5.将配置信息以REST接口的形式暴露
+
+由于SpringCloud Config默认使用GIT来存储配置文件(也支持SVN和本地文件)，但最推荐的还是git，而且使用http/https访问的形式。
+
+### 12.3 SpringCloud Config 服务端
+
+1.在github上新建一个仓库**microservice-config**
+
+2.在本地拉取该项目,使用 git clone git@github.com:SillyBoy007/microservice-config.git
+
+3.在该项目里新建一个application.yml
+
+4.编写yml文件，**并保存为UTF-8格式**
+
+```properties
+spring:
+  profiles:
+    active:
+      - dev
+---
+
+spring:
+  profiles: dev  #开发环境
+  application:
+    name: microservice-config-wang-dev
+
+---
+spring:
+  profiles: test  #测试环境
+  application:
+    name: microservice-config-wang-test
+```
+
+5.上传yml文件到github
+
+查看github的Code发现上面已经有了该文件。那么我们该如何读取github上的文件配置信息呢?
+
+**搭建ConfigServer**
+
+创建一个模块microservice-config-3344。
+
+**pom文件**
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.wang.springcloud</groupId>
+        <artifactId>microservice</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>microservice-config-3344</artifactId>
+
+
+    <dependencies>
+        <!-- springCloud Config -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-config-server</artifactId>
+        </dependency>
+        <!-- 避免Config的Git插件报错：org/eclipse/jgit/api/TransportConfigCallback -->
+        <dependency>
+            <groupId>org.eclipse.jgit</groupId>
+            <artifactId>org.eclipse.jgit</artifactId>
+            <version>4.10.0.201712302008-r</version>
+        </dependency>
+        <!-- 图形化监控 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <!-- 熔断 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-hystrix</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-eureka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-config</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jetty</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+        </dependency>
+        <!-- 热部署插件 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>springloaded</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+        </dependency>
+    </dependencies>
+</project>
+```
+
+**yml文件配置**
+
+```properties
+server:
+  port: 3344
+spring:
+  application:
+    name: microservice-config
+  cloud:
+    config:
+      server:
+        git:
+          uri: git@github.com:SillyBoy007/microservice-config.git #git仓库地址
+```
+
+**主启动类注解**
+
+```java
+@SpringBootApplication
+@EnableConfigServer
+public class SpringCloudConfig3344 {
+    public static void main(String[] args) {
+        SpringApplication.run(SpringCloudConfig3344.class,args);
+    }
+}
+
+```
+
+**修改系统host文件,增加映射**
+
+```
+127.0.0.1 config3344.com
+```
+
+**测试通过microservice-config-3344是否可以从github上获取配置内容**
+
+启动microservice-config-3344项目,分别访问下列的地址
+
+http://config3344.com:3344/application-dev.yml
+
+http://config3344.com:3344/application-test.yml
+
+http://config3344.com:3344/application-dasdd.yml
+
+**配置读取规则**
+
+1./{application}-{profile}.yml 
+
+http://config3344.com:3344/application-dev.yml
+
+2./{application}/{profile}[/{label}]
+
+http://config3344.com:3344/applicaiton/test/master
+
+3./label/{application}-{profile}.yml
+
+http://config3344.com:3344/master/application-test.yml
