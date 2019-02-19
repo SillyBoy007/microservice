@@ -15,11 +15,11 @@ import java.util.List;
 新建
 
 一个实现了FallbackFactory接口的类DeptClientServiceFallbackFactory
- * @author zzyy
- * @date 2018年4月21日
+ * @author
+ * @date
  */
-@FeignClient(value = "MICROSERVICE-DEPT")
-//@FeignClient(value = "MICROSERVICECLOUD-DEPT",fallbackFactory=DeptClientServiceFallbackFactory.class)
+//@FeignClient(value = "MICROSERVICE-DEPT")
+@FeignClient(value = "MICROSERVICE-DEPT",fallbackFactory=DeptClientServiceFallbackFactory.class)
 public interface DeptClientService
 {
     @RequestMapping(value = "/dept/get/{id}", method = RequestMethod.GET)

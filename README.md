@@ -1541,7 +1541,7 @@ Feign通过接口的方法调用Rest服务(之前是Ribbon+RestTemplate),该请�
 </project>
 ```
 
-**新增API接口类**
+**新增API接口类DeptClientService**
 
 ```java
 package com.wang.springcloud.service;
@@ -1687,4 +1687,415 @@ public class DeptController {
 
 Hystrix是一个用于处理分布式系统的延迟和容错的开源库，在分布式系统里，许多依赖不可避免的会调用失败，比如超时、异常等，Hystrix能保证在一个依赖出问题的情况下，不会导致整体服务失败，避免级联故障，以提高分布式系统的弹性。
 
-"断路器"本身是一种开关装置，当某个服务单元发生故障之后，通过断路器的故障监控(类似熔断保险丝),像调用方法返回一个符合预期的、可以处理的备选响应(Fallback),而不是长时间的等待或者抛出调用方法无法处理的异常，这样就保证了服务调用方的线程不会被长时间、不必要地占用，从而避免了故障在分布式系统的蔓延，乃至雪崩。
+"断路器"本身是一种开关装置，当某个服务单元发生故障之后，通过断路器的故障监控(类似熔断保险丝),向调用方法返回一个符合预期的、可以处理的备选响应(Fallback),而不是长时间的等待或者抛出调用方法无法处理的异常，这样就保证了服务调用方的线程不会被长时间、不必要地占用，从而避免了故障在分布式系统的蔓延，乃至雪崩。
+
+### 10.2 服务熔断
+
+**服务熔断**
+
+熔断机制是应对雪崩效应的一种微服务链路保护机制。
+
+当扇出链路的某个微服务不可用或者响应时间太长时，会进行服务的降级，**进而熔断该节点微服务的调用，快速返回"错误"的响应信息**。当检测到该节点微服务调用响应正常后恢复调用链路。在SpringCloud框架里熔断机制通过Hystrix实现。Hystrix会监控微服务间调用的状况，当失败的调用到一定阈值，缺省是5秒内20次调用失败就会启动熔断机制。熔断机制的注解是@HystrixCommand。
+
+参考microservice-provider-dept-8001项目,新建microservice-provider-dept-hystrix-8001项目
+
+**pom修改**
+
+主要修改的是artifactId以及引入hystrix的依赖
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.wang.springcloud</groupId>
+        <artifactId>microservice</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>microservice-provider-dept-hystrix-8001</artifactId>
+
+    <dependencies>
+        <!-- 引入自己定义的api通用包，可以使用Dept部门Entity -->
+        <dependency>
+            <groupId>com.wang.springcloud</groupId>
+            <artifactId>microservice-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- actuator监控信息完善 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <!-- 将微服务provider注册进eureka -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-eureka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-config</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>druid</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.mybatis.spring.boot</groupId>
+            <artifactId>mybatis-spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jetty</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+        </dependency>
+        <!-- 修改后立即生效，热部署 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>springloaded</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+        </dependency>
+        <!--hystrix-->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-hystrix</artifactId>
+        </dependency>
+    </dependencies>
+    
+</project>
+
+```
+
+**yml文件修改**
+
+文件的其他配置不变，只需要修改instance-id以及info的名称就可以了
+
+```properties
+eureka:
+  client:
+    service-url:
+      #defaultZone: http://localhost:7001/eureka
+      defaultZone: http://localhost:7001/eureka,http://localhost:7002/eureka,http://localhost:7002/eureka
+  instance:
+    instance-id: microservice-dept-hystrix-8001
+    prefer-ip-address: true #访问路径可以显示ip地址
+    
+info:
+  app.name: microservice
+  company.name: www.waaaa.com
+  build.artifactId: microservice-provider-dept-hystrix-8001
+  build.version: 1.0-SNAPSHOT
+```
+
+**修改DeptController**
+
+```java
+package com.wang.springcloud.controller;
+
+import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
+import com.wang.springcloud.entities.Dept;
+import com.wang.springcloud.service.DeptService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.client.ServiceInstance;
+import org.springframework.cloud.client.discovery.DiscoveryClient;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController //自带@ResponseBody,无法返回页面
+public class DeptController {
+    @Autowired
+    private DeptService service = null;
+
+    @RequestMapping(value = "/dept/get/{id}", method = RequestMethod.GET)
+    //一旦调用服务方法失败并抛出了错误信息后，会自动调用@HystrixCommand标注好的fallbackMethod调用类中的指定方法
+    @HystrixCommand(fallbackMethod = "processHystrix_Get")
+    public Dept get(@PathVariable("id") Long id)
+    {
+
+        Dept dept = this.service.get(id);
+
+        if (null == dept) {
+            throw new RuntimeException("该ID：" + id + "没有没有对应的信息");
+        }
+
+        return dept;
+    }
+
+    public Dept processHystrix_Get(@PathVariable("id") Long id)
+    {
+        return new Dept().setDeptno(id).setDname("该ID：" + id + "没有没有对应的信息,null--@HystrixCommand")
+                .setDb_source("no this database in MySQL");
+    }
+}
+
+```
+
+**主启动类开启服务熔断**
+
+```java
+@SpringBootApplication
+@EnableEurekaClient //本服务启动后会自动注册进Eureka服务中
+@EnableDiscoveryClient //服务发现
+@EnableHystrix //开启Hystrix服务熔断
+public class DeptProviderHystrix8001 {
+    public static void main(String[] args) {
+        SpringApplication.run(DeptProviderHystrix8001.class,args);
+    }
+}
+
+```
+
+启动所有项目，访问http://172.16.80.15:8001/dept/get/234，查找一个不存在的数据，观察返回信息是否正确。
+
+### 10.3 服务降级
+
+整体资源快不够了，先将某些服务关掉，等资源足够了，再重新开启。
+
+服务的降级是客户端完成的，与服务端没有关系。
+
+**修改microservice-api项目**
+
+新增DeptClientServiceFallbackFactory类。
+
+```java
+package com.wang.springcloud.service;
+
+import java.util.List;
+import com.wang.springcloud.entities.Dept;
+import org.springframework.stereotype.Component;
+import feign.hystrix.FallbackFactory;
+
+@Component // 不要忘记添加
+public class DeptClientServiceFallbackFactory implements FallbackFactory<DeptClientService>
+{
+	@Override
+	public DeptClientService create(Throwable throwable)
+	{
+		return new DeptClientService() {
+			@Override
+			public Dept get(long id)
+			{
+				return new Dept().setDeptno(id).setDname("该ID：" + id + "没有没有对应的信息,Consumer客户端提供的降级信息,此刻服务Provider已经关闭")
+						.setDb_source("no this database in MySQL");
+			}
+
+			@Override
+			public List<Dept> list()
+			{
+				return null;
+			}
+
+			@Override
+			public boolean add(Dept dept)
+			{
+				return false;
+			}
+		};
+	}
+}
+
+```
+
+**修改DeptClientService接口**
+
+```java
+@FeignClient(value = "MICROSERVICE-DEPT",fallbackFactory=DeptClientServiceFallbackFactory.class)
+public interface DeptClientService
+{
+    @RequestMapping(value = "/dept/get/{id}", method = RequestMethod.GET)
+    public Dept get(@PathVariable("id") long id);
+
+    @RequestMapping(value = "/dept/list", method = RequestMethod.GET)
+    public List<Dept> list();
+
+    @RequestMapping(value = "/dept/add", method = RequestMethod.POST)
+    public boolean add(Dept dept);
+}
+```
+
+上面修改好后记得clean,package一下，更新jar包，方便其他项目调用
+
+**修改microservice-consumer-dept-feign项目**
+
+修改yml文件
+
+```pr
+feign:
+  hystrix:
+    enabled: true
+```
+
+启动项目,访问http://localhost/consumer/get/1，看看是否正确返回数据，关掉服务提供者项目，再次访问该接口，观察返回的结果。
+
+### 10.4 服务熔断/降级总结
+
+**服务熔断**
+
+一般是某个服务故障或异常引起,类似现实世界中的"保险丝",当某个异常条件被触发,直接熔断整个服务，而不是一直等到此服务超时。
+
+**服务降级**
+
+所谓降级，一般是从整体负荷考虑。就是当某个服务熔断后，服务器不再被调用,此时客户端可以自己准备一个本地的fallback回调，返回一个缺省值。这样做,虽然服务水平下降，但好歹可用，比直接挂掉要强。
+
+### 10.5 服务监控Hystrix Dashboard
+
+除了隔离依赖服务的调用之外，Hystrix还提供了**准实时的调用监控**(Hystrix Dashboard),Hystrix会持续地记录所有通过Hystrix发起的请求的执行信息,并以统计报表和图形的形式展示给用户,包括每秒执行多少请求多少成功,多少失败等。Netflix通过hystrix-metrics-event-stream项目实现了对以上指标的监控。Spring Cloud也提供了Hystrix Dashboard的整合,对监控内容转化成可视化界面。
+
+**工程搭建**
+
+**1.新建microservice-consumer-hystrix-dashboard模块**
+
+**2.pom文件**
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.atguigu.springcloud</groupId>
+        <artifactId>microservicecloud</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>microservicecloud-consumer-hystrix-dashboard</artifactId>
+
+    <dependencies>
+        <!-- 自己定义的api -->
+        <dependency>
+            <groupId>com.atguigu.springcloud</groupId>
+            <artifactId>microservicecloud-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <!-- 修改后立即生效，热部署 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>springloaded</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+        </dependency>
+        <!-- Ribbon相关 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-eureka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-ribbon</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-config</artifactId>
+        </dependency>
+        <!-- feign相关 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-feign</artifactId>
+        </dependency>
+        <!-- hystrix和 hystrix-dashboard相关 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-hystrix</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-hystrix-dashboard</artifactId>
+        </dependency>
+    </dependencies>
+</project>
+```
+
+**3.主启动类注解**
+
+开启HystrixDashboard的相关注解。
+
+```java
+package com.wang.springcloud;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.netflix.hystrix.dashboard.EnableHystrixDashboard;
+
+@SpringBootApplication
+@EnableHystrixDashboard
+public class DeptConsumerHystrixDashboard {
+    public static void main(String[] args) {
+        SpringApplication.run(DeptConsumerHystrixDashboard.class,args);
+    }
+}
+
+```
+
+**4.yml文件配置**
+
+```properties
+server:
+  port: 9001
+```
+
+上述步骤配置完成后，启动项目,访问http://localhost:9001/hystrix，若一切顺利，就可以看到Hystrix Dashboard的首页了。
+
+![1550559290811](img/7.png)
+
+那么该如何使用Hystrix Dashboard呢?
+
+启动3个eureka集群，启动microservice-provider-dept-hystrix-8001。
+
+**填写监控地址**
+
+首先填写好监控地址:http://要监控的主机名:要监控的端口号/hystrix.stream
+
+Delay:该参数用来控制服务器上轮询监控信息的延迟时间，默认为2000毫秒,可以通过配置该属性来降低客户端的网络和CPU消耗。
+
+Title:该参数对应了头部标题Hystrix Stream之后的内容，默认会使用具体监控实例的URL，可以通过配置该信息来展示更合适的标题。
+
+**查看图形化页面**
+
+上述信息填写好后,点击Monitor Stream按钮,来到图形监控页面。
+
+![1550559908679](C:\Users\admin\AppData\Local\Temp\1550559908679.png)
+
+不断刷新http://localhost:8001/dept/get/2页面，然后观察下面的图形变化。
+
+**七色:**左边七个颜色的数字分别对应右边七种颜色说明。
+
+Success成功| Short-Circuited短路 | Bad Request请求无效 | Timeout超时 | Rejected拒绝| Failure失败 | Error %错误
+
+**一圈:**左边实心圆有两种含义，它通过颜色的变化代表了实例的健康程度，它的健康度从绿色<黄色<橙色<红色递减。该实心圆除了颜色的变化之外，它的大小也会根据实例的请求流量发生变化，流量越大该实心圆越大，所以通过实心圆的展示就可以在大量实例中快速的发现故障实例和高压力实例。
+
+**一线:**用来监控2分钟内流量的相对变化，可以通过它观察到流量的上升和下降趋势。
+
+![1550560878630](img/8.png)
+
+![1550560929766](img/9.png)
+
