@@ -10,5 +10,6 @@ eureka:
     register-with-eureka: false #不把自己注册到eureka上
     fetch-registry: false #不从eureka上来获取服务的注册信息
     service-url:
-      #单机版 defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka
+      #单机版
+      #defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka
       defaultZone: http://eureka7002.com:7002/eureka,http://eureka7003.com:7003/eureka

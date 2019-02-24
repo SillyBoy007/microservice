@@ -21,6 +21,9 @@
         <module>microservice-consumer-hystrix-dashboard</module>
         <module>microservice-zuul-gateway-9527</module>
         <module>microservice-config-3344</module>
+        <module>microservice-config-client-3355</module>
+        <module>microservice-config-eureka-server-7001</module>
+        <module>microservice-config-dept-client-8001</module>
     </modules>
     <packaging>pom</packaging>
 
@@ -52,7 +55,7 @@
             <dependency>
                 <groupId>mysql</groupId>
                 <artifactId>mysql-connector-java</artifactId>
-                <version>5.0.4</version>
+                <version>5.1.6</version>
             </dependency>
             <dependency>
                 <groupId>com.alibaba</groupId>
