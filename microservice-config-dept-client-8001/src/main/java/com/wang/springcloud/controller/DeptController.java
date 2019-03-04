@@ -38,8 +38,7 @@ public class DeptController {
 
         List<ServiceInstance> srvList = client.getInstances("MICROSERVICECLOUD-DEPT");
         for (ServiceInstance element : srvList) {
-            System.out.println(element.getServiceId() + "\t" + element.getHost() + "\t" + element.getPort() + "\t"
-                    + element.getUri());
+            System.out.println(element.getServiceId() + "\t" + element.getHost() + "\t" + element.getPort() + "\t"+ element.getUri());
         }
         return this.client;
     }
